@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>昼月·私语</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.4.0/fonts/remixicon.css">
+<script>tailwind.config={theme:{extend:{colors:{main:'#7c3aed'}}}}</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{height:100vh;overflow:hidden}
+.scroll-none::-webkit-scrollbar{display:none}
+.scroll-none{-ms-overflow-style:none;scrollbar-width:none}
+.msg-left{border-radius:18px 18px 18px 5px}
+.msg-right{border-radius:18px 18px 5px 18px}
+</style>
+</head>
+<body class="bg-gray-100 flex flex-col">
+<!--顶部导航栏 默认白色-->
+<header id="topNav" class="bg-white flex items-center justify-between px-4 h-14 shadow-sm shrink-0">
+<div class="flex items-center gap-3" onclick="openPartnerSet()">
+<img id="partnerHead" src="https://picsum.photos/200?rand=1" class="w-10 h-10 rounded-full object-cover">
+<div>
+<div id="partnerNick" class="font-medium text-gray-800 text-sm">晚风</div>
+<div id="partnerState" class="text-xs text-gray-500">在线空闲</div>
+</div>
+</div>
+<div class="flex items-center gap-5">
+<i class="ri-file-text-3-line text-xl text-gray-600" onclick="openWordCard()"></i>
+<i class="ri-palette-line text-xl text-gray-600" onclick="openSkinSet()"></i>
+</div>
+</header>
+
+<!--聊天内容区域-->
+<section id="chatBox" class="flex-1 overflow-y-auto scroll-none px-3 py-3"></section>
+
+<!--引用回复提示栏-->
+<div id="replyTip" class="hidden bg-gray-50 border-t px-4 py-2 shrink-0 flex items-center justify-between">
+<div class="flex items-center gap-2 overflow-hidden">
+<i class="ri-reply-fill text-gray-500"></i>
+<div class="truncate">
+<p id="replyUser" class="text-xs text-gray-600"></p>
+<p id="replyText" class="text-sm text-gray-700 truncate"></p>
+</div>
+</div>
+<i class="ri-close-line text-lg text-gray-500" onclick="closeReply()"></i>
+</div>
+
+<!--底部输入栏 默认白色-->
+<footer id="footNav" class="bg-white border-t border-gray-200 shrink-0">
+<div class="flex border-b border-gray-100">
+<button class="flex-1 py-2 text-sm text-main border-b-2 border-main" onclick="switchTab(0)">聊天</button>
+<button class="flex-1 py-2 text-sm text-gray-500" onclick="switchTab(1)">表情</button>
+<button class="flex-1 py-2 text-sm text-gray-500" onclick="switchTab(2)">表情包</button>
+</div>
+<!--文字输入-->
+<div id="tab0" class="p-3 flex items-end gap-2">
+<textarea id="chatInput" rows="1" placeholder="写下想说的话..." class="flex-1 bg-gray-100 rounded-full px-4 py-2 outline-none resize-none max-h-28"></textarea>
+<button onclick="sendMyChat()" class="w-9 h-9 rounded-full bg-main text-white flex items-center justify-center"><i class="ri-send-plane-2-fill"></i></button>
+</div>
+<!--系统表情-->
+<div id="tab1" class="hidden p-3 h-44 overflow-y-auto scroll-none grid grid-cols-8 gap-2"></div>
+<!--自定义表情包-->
+<div id="tab2" class="hidden p-3 h-44 overflow-y-auto scroll-none">
+<label class="block border-2 border-dashed border-gray-300 rounded-lg py-2.5 text-center text-sm text-gray-500 mb-3 cursor-pointer">
+<input type="file" accept="image/*" multiple class="hidden" onchange="uploadLocalFace(event)">
+<i class="ri-image-add-line mr-1"></i>导入相册表情包
+</label>
+<div id="faceContainer" class="grid grid-cols-4 gap-2"></div>
+</div>
+</footer>
+
+<!--对方信息设置弹窗-->
+<div id="partnerPopup" class="fixed inset-0 bg-black/50 z-[999] hidden flex items-center justify-center p-4">
+<div class="bg-white w-full max-w-sm rounded-xl p-5">
+<div class="flex justify-end"><i class="ri-close-large-line text-xl" onclick="closePartnerSet()"></i></div>
+<div class="flex flex-col items-center my-4">
+<img id="bigPartnerAvatar" src="https://picsum.photos/200?rand=1" class="w-28 h-28 rounded-full object-cover">
+<label class="mt-3 text-sm text-gray-600 bg-gray-100 px-4 py-1.5 rounded-lg cursor-pointer">
+<input type="file" accept="image/*" class="hidden" onchange="changePartnerAvatar(event)">更换对方头像
+</label>
+</div>
+<input id="setPartnerName" placeholder="设置对方昵称" class="w-full border rounded-lg px-3 py-2.5 mb-3 outline-none">
+<input id="setPartnerStatus" placeholder="设置在线状态" class="w-full border rounded-lg px-3 py-2.5 mb-4 outline-none">
+<button onclick="savePartnerInfo()" class="w-full bg-main text-white py-2.5 rounded-lg">保存修改</button>
+</div>
+</div>
+
+<!--字卡管理弹窗-->
+<div id="wordCardPopup" class="fixed inset-0 bg-black/50 z-[999] hidden flex items-center justify-center p-4">
+<div class="bg-white w-full max-w-md rounded-xl flex flex-col max-h-[90vh]">
+<div class="p-4 border-b flex justify-between items-center">
+<h3 class="font-bold text-gray-800">智能回复字卡库</h3>
+<i class="ri-close-large-line text-xl" onclick="closeWordCard()"></i>
+</div>
+<div class="flex border-b">
+<button class="flex-1 py-2 text-sm text-main border-b-2 border-main" onclick="switchWordTab(0)">分组管理</button>
+<button class="flex-1 py-2 text-sm text-gray-500" onclick="switchWordTab(1)">字卡列表</button>
+<button class="flex-1 py-2 text-sm text-gray-500" onclick="switchWordTab(2)">回复规则</button>
+</div>
+<!--分组页面-->
+<div id="wordTab0" class="flex-1 overflow-y-auto scroll-none p-4">
+<div class="flex gap-2 mb-4">
+<input id="newGroupInput" placeholder="新建分组名称" class="flex-1 border rounded-lg px-3 py-2 outline-none text-sm">
+<button onclick="createNewGroup()" class="bg-main text-white px-3 py-2 rounded-lg">创建</button>
+</div>
+<div id="groupListBox" class="space-y-2.5"></div>
+</div>
+<!--字卡页面-->
+<div id="wordTab1" class="hidden flex-1 overflow-y-auto scroll-none p-4">
+<div class="flex gap-2 mb-4">
+<select id="chooseGroup" class="flex-1 border rounded-lg px-2 py-2 text-sm" onchange="refreshWordList()"></select>
+<button onclick="openBatchWord()" class="bg-gray-200 px-3 py-2 rounded-lg text-sm">批量导入</button>
+</div>
+<div class="flex gap-2 mb-4">
+<input id="singleWordInput" placeholder="添加单条回复字卡" class="flex-1 border rounded-lg px-3 py-2 outline-none text-sm">
+<button onclick="addSingleWord()" class="bg-main text-white px-3 py-2 rounded-lg">添加</button>
+</div>
+<div id="wordListBox" class="space-y-2.5"></div>
+</div>
+<!--回复规则页面-->
+<div id="wordTab2" class="hidden flex-1 overflow-y-auto scroll-none p-4 space-y-5">
+<div>
+<p class="text-sm text-gray-700 mb-2">自动回复条数范围</p>
+<div class="flex items-center gap-3">
+<input type="number" id="replyMin" value="1" min="1" class="w-16 border rounded px-2 py-1.5 outline-none">
+<span>~</span>
+<input type="number" id="replyMax" value="3" min="1" class="w-16 border rounded px-2 py-1.5 outline-none">
+<span class="text-sm">条</span>
+</div>
+</div>
+<div>
+<p class="text-sm text-gray-700 mb-2">最快回复间隔(秒)</p>
+<input type="number" id="fastTime" value="2" min="1" class="w-full border rounded-lg px-3 py-2.5 outline-none">
+</div>
+<div>
+<p class="text-sm text-gray-700 mb-2">最慢回复间隔(分钟)</p>
+<input type="number" id="slowTime" value="5" min="1" class="w-full border rounded-lg px-3 py-2.5 outline-none">
+</div>
+<button onclick="saveReplyRule()" class="w-full bg-main text-white py-2.5 rounded-lg mt-2">保存回复规则</button>
+</div>
+<!--批量导入字卡弹窗-->
+<div id="batchWordPopup" class="hidden absolute inset-0 bg-black/50 flex items-center justify-center p-4">
+<div class="bg-white w-full max-w-sm rounded-xl p-4">
+<h4 class="font-medium mb-2">批量导入(自动去重)</h4>
+<textarea id="batchWordArea" rows="8" placeholder="每行填写一条回复内容" class="w-full border rounded-lg p-2.5 outline-none text-sm mb-3"></textarea>
+<div class="flex gap-3">
+<button onclick="closeBatchWord()" class="flex-1 bg-gray-200 py-2.5 rounded-lg">取消</button>
+<button onclick="confirmBatchAddWord()" class="flex-1 bg-main text-white py-2.5 rounded-lg">确认导入</button>
+</div>
+</div>
+</div>
+</div>
+
+<!--皮肤&数据管理弹窗-->
+<div id="skinDataPopup" class="fixed inset-0 bg-black/50 z-[999] hidden flex items-center justify-center p-4">
+<div class="bg-white w-full max-w-md rounded-xl flex flex-col max-h-[90vh]">
+<div class="p-4 border-b flex justify-between items-center">
+<h3 class="font-bold text-gray-800">皮肤设置 & 数据管理</h3>
+<i class="ri-close-large-line text-xl" onclick="closeSkinSet()"></i>
+</div>
+<div class="flex-1 overflow-y-auto scroll-none p-4 space-y-6">
+<!--个人资料-->
+<div>
+<p class="text-sm font-medium text-gray-700 mb-3">我的个人资料</p>
+<div class="flex items-center justify-between mb-3">
+<span class="text-sm text-gray-600">我的头像</span>
+<div class="flex items-center gap-2">
+<img id="myAvatarShow" src="https://picsum.photos/200?rand=2" class="w-10 h-10 rounded-full">
+<label class="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded cursor-pointer">
+<input type="file" accept="image/*" class="hidden" onchange="changeMyAvatar(event)">更换
+</label>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-sm text-gray-600">我的昵称</span>
+<input id="myNickSet" class="w-28 border rounded px-2 py-1.5 text-sm outline-none">
+</div>
+</div>
+<!--自定义皮肤-->
+<div>
+<p class="text-sm font-medium text-gray-700 mb-3">界面自定义皮肤</p>
+<div class="space-y-3">
+<div class="flex items-center justify-between">
+<span class="text-sm text-gray-600">主题主色调</span>
+<input type="color" id="mainThemeColor" value="#7c3aed" onchange="updateThemeColor()">
+</div>
+<div class="flex items-center justify-between">
+<span class="text-sm text-gray-600">顶部导航栏颜色</span>
+<input type="color" id="topNavColor" value="#ffffff" onchange="refreshAllSkin()">
+</div>
+<div class="flex items-center justify-between">
+<span class="text-sm text-gray-600">底部输入栏颜色</span>
+<input type="color" id="footNavColor" value="#ffffff" onchange="refreshAllSkin()">
+</div>
+<div class="flex items-center justify-between">
+<span class="text-sm text-gray-600">聊天页面背景色</span>
+<input type="color" id="chatBgTheme" value="#f3f4f6" onchange="refreshAllSkin()">
+</div>
+</div>
+</div>
+<!--数据导入导出-->
+<div>
+<p class="text-sm font-medium text-gray-700 mb-3">全量数据备份恢复</p>
+<button onclick="exportAllLocalData()" class="w-full bg-emerald-500 text-white py-2.5 rounded-lg mb-3">导出全部聊天数据</button>
+<label class="block w-full bg-blue-500 text-white py-2.5 rounded-lg text-center cursor-pointer mb-3">
+<input type="file" accept=".json" class="hidden" onchange="importAllLocalData(event)">导入备份数据文件
+</label>
+<button onclick="clearAllBrowserData()" class="w-full bg-red-500 text-white py-2.5 rounded-lg">清空本地所有数据</button>
+</div>
+</div>
+<div class="p-4 border-t">
+<button onclick="saveAllSkinUserSet()" class="w-full bg-main text-white py-2.5 rounded-lg">保存全部设置</button>
+</div>
+</div>
+</div>
+
+<script>
+//全局核心变量
+let chatDB,nowGroup="defaultGroup",replyMsgId=null,timerAutoReply=null;
+const DB_Name="ZhouYuePrivateChat",DB_Version=2;
+const defaultEmoji=["😀","😃","😄","😁","🥰","😘","😗","😙","😚","🙂","😊","😇","🥺","🥹","😭","😱"];
+
+//初始化IndexedDB 超大容量存储 不受前端内存限制
+function initChatDB(){return new Promise((res,rej)=>{let openReq=indexedDB.open(DB_Name,DB_Version);openReq.onerror=()=>rej();openReq.onsuccess=()=>{chatDB=openReq.result;res()};openReq.onupgradeneeded=e=>{let db=e.target.result;if(!db.objectStoreNames.contains("chatMsg"))db.createObjectStore("chatMsg",{keyPath:"id",autoIncrement:true});if(!db.objectStoreNames.contains("wordGroup")){let gStore=db.createObjectStore("wordGroup",{keyPath:"gid"});gStore.transaction.oncomplete=()=>{let t=db.transaction("wordGroup","readwrite");t.objectStore("wordGroup").add({gid:"defaultGroup",gname:"默认回复分组"})};}if(!db.objectStoreNames.contains("replyWord")){let wStore=db.createObjectStore("replyWord",{keyPath:"wid",autoIncrement:true});wStore.createIndex("groupID","groupID");wStore.createIndex("wordText","wordText",{unique:true});}if(!db.objectStoreNames.contains("localFace"))db.createObjectStore("localFace",{keyPath:"fid",autoIncrement:true});if(!db.objectStoreNames.contains("userConfig"))db.createObjectStore("userConfig",{keyPath:"cfgKey"});}})}
+//数据库通用操作
+function dbExecute(storeName,mode,fn){return new Promise((res,rej)=>{let trans=chatDB.transaction(storeName,mode);let store=trans.objectStore(storeName);let req=fn(store);req.onsuccess=()=>res(req.result);req.onerror=()=>rej()})}
+//页面初始化
+async function startInit(){await initChatDB;loadEmojiList();await loadAllUserConfig();await renderAllChatMsg();await loadAllWordGroup();await loadLocalFaceList();autoInputHeight()}
+document.addEventListener("DOMContentLoaded",startInit);
+//底部标签切换
+function switchTab(num){document.getElementById("tab0").classList.add("hidden");document.getElementById("tab1").classList.add("hidden");document.getElementById("tab2").classList.add("hidden");document.querySelectorAll("#footNav button").forEach((item,idx)=>{item.className=idx===num?"flex-1 py-2 text-sm text-main border-b-2 border-main":"flex-1 py-2 text-sm text-gray-500"});document.getElementById("tab"+num).classList.remove("hidden")}
+//加载内置表情
+function loadEmojiList(){let box=document.getElementById("tab1");box.innerHTML="";defaultEmoji.forEach(em=>box.innerHTML+=`<span class="text-2xl text-center py-1 cursor-pointer hover:bg-gray-200 rounded" onclick="insertEmojiToInput('${em}')">${em}</span>`)}
+function insertEmojiToInput(em){let inp=document.getElementById("chatInput");inp.value+=em;inp.focus();switchTab(0)}
+//输入框自适应高度
+function autoInputHeight(){let inp=document.getElementById("chatInput");inp.addEventListener("input",()=>{inp.style.height="auto";inp.style.height=Math.min(inp.scrollHeight,112)+"px"})}
+//发送我方消息
+async function sendMyChat(){let text=document.getElementById("chatInput").value.trim();if(!text)return;let msgData={type:"text",sender:"self",content:text,createTime:Date.now(),replyTo:replyMsgId};let msgId=await dbExecute("chatMsg","readwrite",s=>s.add(msgData));msgData.id=msgId;addMsgToPage(msgData);document.getElementById("chatInput").value="";document.getElementById("chatInput").style.height="auto";closeReply();startAutoReply()}
+//渲染消息到页面
+async function addMsgToPage(msg){let wrap=document.getElementById("chatBox");let isSelf=msg.sender=="self";let myNick=await getConfig("myNick")||"我";let otherNick=await getConfig("otherNick")||"晚风";let myHead=await getConfig("myHeadImg")||"https://picsum.photos/200?rand=2";let otherHead=await getConfig("otherHeadImg")||"https://picsum.photos/200?rand=1";let showNick=isSelf?myNick:otherNick;let showHead=isSelf?myHead:otherHead;let timeStr=new Date(msg.createTime).toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"});let replyHtml="";if(msg.replyTo){let repMsg=await dbExecute("chatMsg","readonly",s=>s.get(msg.replyTo));if(repMsg){let repN=repMsg.sender=="self"?myNick:otherNick;let repC=repMsg.type=="image"?"[图片表情包]":repMsg.content;replyHtml=`<div class="bg-black/5 rounded p-1 text-xs mb-1"><p class="text-gray-600">${repN}</p><p class="truncate text-gray-500">${repC}</p></div>`}}let contentHtml=msg.type=="image"?`<img src="${msg.content}" class="max-w-[180px] rounded-lg">`:`<p class="break-words">${msg.content}</p>`;let html=`<div class="flex ${isSelf?'justify-end':'justify-start'} mb-3.5"><div class="flex ${isSelf?'flex-row-reverse':''} items-end gap-2"><img src="${showHead}" class="w-8 h-8 rounded-full object-cover"><div class="max-w-[70%]"><div class="text-xs text-gray-400 ${isSelf?'text-right':''} mb-1">${showNick} ${timeStr}</div><div class="${isSelf?'bg-main text-white msg-right':'bg-white text-gray-700 msg-left'} px-3 py-2 shadow-sm">${replyHtml}${contentHtml}</div><div class="flex ${isSelf?'justify-end':''} gap-3 mt-1.5 text-xs text-gray-400"><span onclick="quoteReplyMsg(${msg.id})">引用回复</span><span onclick="deleteSingleMsg(${msg.id})">删除消息</span></div></div></div></div>`;wrap.insertAdjacentHTML("beforeend",html);wrap.scrollTop=wrap.scrollHeight}
+//加载所有聊天记录
+async function renderAllChatMsg(){let allMsg=await dbExecute("chatMsg","readonly",s=>s.getAll());allMsg.sort((a,b)=>a.createTime-b.createTime);document.getElementById("chatBox").innerHTML="";if(allMsg.length===0){document.getElementById("chatBox").innerHTML=`<div class="text-center text-gray-400 py-12 text-sm">昼月·私语<br>二人专属私密聊天室<br>所有数据仅留存本地浏览器</div>`;return}allMsg.forEach(item=>addMsgToPage(item))}
+//删除单条消息
+async function deleteSingleMsg(mid){if(!confirm("确定删除这条聊天记录？"))return;await dbExecute("chatMsg","readwrite",s=>s.delete(mid));renderAllChatMsg()}
+//引用回复消息
+async function quoteReplyMsg(mid){replyMsgId=mid;let m=await dbExecute("chatMsg","readonly",s=>s.get(mid));let uname=m.sender=="self"?(await getConfig("myNick")||"我"):(await getConfig("otherNick")||"晚风");let cont=m.type=="image"?"[图片表情包]":m.content;document.getElementById("replyUser").innerText=uname;document.getElementById("replyText").innerText=cont;document.getElementById("replyTip").classList.remove("hidden");document.getElementById("chatInput").focus()}
+function closeReply(){replyMsgId=null;document.getElementById("replyTip").classList.add("hidden")}
+//自动对方字卡回复
+async function startAutoReply(){if(timerAutoReply)clearInterval(timerAutoReply);let minR=parseInt(document.getElementById("replyMin").value)||1;let maxR=parseInt(document.getElementById("replyMax").value)||3;let fastS=parseInt(document.getElementById("fastTime").value)||2;let slowM=parseInt(document.getElementById("slowTime").value)||5;let totalDelay=Math.floor(Math.random()*(slowM*60-fastS)+fastS)*1000;let replyCount=Math.floor(Math.random()*(maxR-minR+1))+minR;let singleDelay=totalDelay/replyCount;let nowNum=0;timerAutoReply=setInterval(async()=>{nowNum++;if(nowNum>replyCount){clearInterval(timerAutoReply);timerAutoReply=null;return;}await sendOtherWordReply()},singleDelay)}
+//发送对方字卡回复
+async function sendOtherWordReply(){let allWord=await dbExecute("replyWord","readonly",s=>s.getAll());let wordText="";if(allWord.length<=0){let tempWord=["嗯呐","好哒","收到啦","知道咯","嘿嘿","可以哒","没问题","okk"];wordText=tempWord[Math.floor(Math.random()*tempWord.length)]}else{let randomW=allWord[Math.floor(Math.random()*allWord.length)];wordText=randomW.wordText}let replyData={type:"text",sender:"other",content:wordText,createTime:Date.now(),replyTo:null};let rid=await dbExecute("chatMsg","readwrite",s=>s.add(replyData));replyData.id=rid;addMsgToPage(replyData)}
+//表情包功能
+async function loadLocalFaceList(){let allFace=await dbExecute("localFace","readonly",s=>s.getAll());let box=document.getElementById("faceContainer");box.innerHTML="";allFace.forEach(f=>box.innerHTML+=`<div class="relative group"><img src="${f.fimg}" class="w-full aspect-square rounded cursor-pointer" onclick="sendFaceMsg(${f.fid})"><i class="ri-delete-circle-fill absolute top-0 right-0 text-red-500 opacity-0 group-hover:opacity-100" onclick="delLocalFace(${f.fid})"></i></div>`)}
+async function uploadLocalFace(e){let files=e.target.files;for(let f of files){let reader=new FileReader;reader.onload=async(res)=>{await dbExecute("localFace","readwrite",s=>s.add({fimg:res.target.result}));loadLocalFaceList()};reader.readAsDataURL(f)}e.target.value=""}
+async function sendFaceMsg(fid){let face=await dbExecute("localFace","readonly",s=>s.get(fid));let msg={type:"image",sender:"self",content:face.fimg,createTime:Date.now(),replyTo:replyMsgId};let mid=await dbExecute("chatMsg","readwrite",s=>s.add(msg));msg.id=mid;addMsgToPage(msg);closeReply();startAutoReply();switchTab(0)}
+async function delLocalFace(fid){await dbExecute("localFace","readwrite",s=>s.delete(fid));loadLocalFaceList()}
+//字卡分组操作
+function switchWordTab(n){document.getElementById("wordTab0").classList.add("hidden");document.getElementById("wordTab1").classList.add("hidden");document.getElementById("wordTab2").classList.add("hidden");document.querySelectorAll("#wordCardPopup button").forEach((item,i)=>item.className=i===n?"flex-1 py-2 text-sm text-main border-b-2 border-main":"flex-1 py-2 text-sm text-gray-500");document.getElementById("wordTab"+n).classList.remove("hidden")}
+async function loadAllWordGroup(){let allGroup=await dbExecute("wordGroup","readonly",s=>s.getAll());let gBox=document.getElementById("groupListBox");let gSel=document.getElementById("chooseGroup");gBox.innerHTML="";gSel.innerHTML="";allGroup.forEach(g=>{gBox.innerHTML+=`<div class="flex justify-between items-center bg-gray-50 rounded-lg p-2.5"><span class="text-sm">${g.gname}</span>${g.gid=="defaultGroup"?"":`<i class="ri-delete-bin-5-line text-red-400" onclick="removeWordGroup('${g.gid}')"></i>`}</div>`;gSel.innerHTML+=`<option value="${g.gid}">${g.gname}</option>`});nowGroup=document.getElementById("chooseGroup").value||"defaultGroup"}
+async function createNewGroup(){let name=document.getElementById("newGroupInput").value.trim();if(!name)return;let gid="group_"+Date.now();await dbExecute("wordGroup","readwrite",s=>s.add({gid,gname:name}));document.getElementById("newGroupInput").value="";loadAllWordGroup()}
+async function removeWordGroup(gid){if(!confirm("删除分组会清空分组内所有回复字卡！"))return;await dbExecute("wordGroup","readwrite",s=>s.delete(gid));let allW=await dbExecute("replyWord","readonly",s=>s.getAll());let delW=allW.filter(w=>w.groupID===gid);for(let w of delW)await dbExecute("replyWord","readwrite",s=>s.delete(w.wid));loadAllWordGroup();refreshWordList()}
+//字卡增删
+async function refreshWordList(){nowGroup=document.getElementById("chooseGroup").value;let list=await dbExecute("replyWord","readonly",s=>s.index("groupID").getAll(nowGroup));let wBox=document.getElementById("wordListBox");wBox.innerHTML="";list.forEach(w=>wBox.innerHTML+=`<div class="flex justify-between items-center bg-gray-50 rounded-lg p-2.5"><span class="text-sm truncate flex-1">${w.wordText}</span><i class="ri-delete-bin-5-line text-red-400" onclick="deleteOneWord(${w.wid})"></i></div>`)}
+async function addSingleWord(){let txt=document.getElementById("singleWordInput").value.trim();if(!txt)return;try{await dbExecute("replyWord","readwrite",s=>s.add({groupID:nowGroup,wordText:txt}))}catch{alert("该字卡已存在，自动查重禁止重复添加");return}document.getElementById("singleWordInput").value="";refreshWordList()}
+async function deleteOneWord(wid){await dbExecute("replyWord","readwrite",s=>s.delete(wid));refreshWordList()}
+//批量导入字卡
+function openBatchWord(){document.getElementById("batchWordPopup").classList.remove("hidden")}
+function closeBatchWord(){document.getElementById("batchWordPopup").classList.add("hidden");document.getElementById("batchWordArea").value=""}
+async function confirmBatchAddWord(){let text=document.getElementById("batchWordArea").value;let arr=text.split("\n").map(v=>v.trim()).filter(v=>v);let success=0,repeat=0;let allExist=await dbExecute("replyWord","readonly",s=>s.getAll());let wordSet=new Set(allExist.map(i=>i.wordText));for(let item of arr){if(wordSet.has(item)){repeat++;continue}await dbExecute("replyWord","readwrite",s=>s.add({groupID:nowGroup,wordText:item}));wordSet.add(item);success++}alert(`批量导入完成：成功${success}条，重复${repeat}条`);closeBatchWord();refreshWordList()}
+//保存回复规则
+async function saveReplyRule(){await setConfig("replyMinNum",document.getElementById("replyMin").value);await setConfig("replyMaxNum",document.getElementById("replyMax").value);await setConfig("replyFastSec",document.getElementById("fastTime").value);await setConfig("replySlowMin",document.getElementById("slowTime").value);alert("自动回复规则保存成功")}
+//用户配置读写
+async function getConfig(key){let res=await dbExecute("userConfig","readonly",s=>s.get(key));return res?res.cfgValue:""}
+async function setConfig(key,val){await dbExecute("userConfig","readwrite",s=>s.put({cfgKey:key,cfgValue:val}))}
+//加载所有配置
+async function loadAllUserConfig(){document.getElementById("myNickSet").value=await getConfig("myNick")||"我";document.getElementById("setPartnerName").value=await getConfig("otherNick")||"晚风";document.getElementById("setPartnerStatus").value=await getConfig("otherState")||"在线空闲";document.getElementById("replyMin").value=await getConfig("replyMinNum")||1;document.getElementById("replyMax").value=await getConfig("replyMaxNum")||3;document.getElementById("fastTime").value=await getConfig("replyFastSec")||2;document.getElementById("slowTime").value=await getConfig("replySlowMin")||5;let themeC=await getConfig("themeColor");if(themeC){document.getElementById("mainThemeColor").value=themeC;document.documentElement.style.setProperty("--tw-color-main",themeC)}document.getElementById("topNavColor").value=await getConfig("topBarColor")||"#ffffff";document.getElementById("footNavColor").value=await getConfig("footBarColor")||"#ffffff";document.getElementById("chatBgTheme").value=await getConfig("chatBgColor")||"#f3f4f6";refreshAllSkin();let myHead=await getConfig("myHeadImg");if(myHead)document.getElementById("myAvatarShow").src=myHead;let oHead=await getConfig("otherHeadImg");if(oHead){document.getElementById("partnerHead").src=oHead;document.getElementById("bigPartnerAvatar").src=oHead}document.getElementById("partnerNick").innerText=await getConfig("otherNick")||"晚风";document.getElementById("partnerState").innerText=await getConfig("otherState")||"在线空闲"}
+//更换头像
+async function changeMyAvatar(e){let file=e.target.files[0];if(!file)return;let r=new FileReader;r.onload=async(res)=>{let d=res.target.result;document.getElementById("myAvatarShow").src=d;await setConfig("myHeadImg",d)};r.readAsDataURL(file);e.target.value=""}
+async function changePartnerAvatar(e){let file=e.target.files[0];if(!file)return;let r=new FileReader;r.onload=async(res)=>{let d=res.target.result;document.getElementById("partnerHead").src=d;document.getElementById("bigPartnerAvatar").src=d;await setConfig("otherHeadImg",d)};r.readAsDataURL(file);e.target.value=""}
+//对方信息弹窗
+function openPartnerSet(){document.getElementById("partnerPopup").classList.remove("hidden")}
+function closePartnerSet(){document.getElementById("partnerPopup").classList.add("hidden")}
+async function savePartnerInfo(){let n=document.getElementById("setPartnerName").value.trim()||"晚风";let s=document.getElementById("setPartnerStatus").value.trim()||"在线空闲";await setConfig("otherNick",n);await setConfig("otherState",s);document.getElementById("partnerNick").innerText=n;document.getElementById("partnerState").innerText=s;closePartnerSet();renderAllChatMsg()}
+//皮肤弹窗
+function openSkinSet(){document.getElementById("skinDataPopup").classList.remove("hidden")}
+function closeSkinSet(){document.getElementById("skinDataPopup").classList.add("hidden")}
+function openWordCard(){document.getElementById("wordCardPopup").classList.remove("hidden")}
+function closeWordCard(){document.getElementById("wordCardPopup").classList.add("hidden")}
+//皮肤样式更新
+function updateThemeColor(){let c=document.getElementById("mainThemeColor").value;document.documentElement.style.setProperty("--tw-color-main",c)}
+function refreshAllSkin(){document.getElementById("topNav").style.backgroundColor=document.getElementById("topNavColor").value;document.getElementById("footNav").style.backgroundColor=document.getElementById("footNavColor").value;document.getElementById("chatBox").style.backgroundColor=document.getElementById("chatBgTheme").value}
+async function saveAllSkinUserSet(){await setConfig("myNick",document.getElementById("myNickSet").value.trim()||"我");await setConfig("themeColor",document.getElementById("mainThemeColor").value);await setConfig("topBarColor",document.getElementById("topNavColor").value);await setConfig("footBarColor",document.getElementById("footNavColor").value);await setConfig("chatBgColor",document.getElementById("chatBgTheme").value);updateThemeColor();refreshAllSkin();alert("所有个性化设置保存完成");closeSkinSet();renderAllChatMsg()}
+//全量数据导出
+async function exportAllLocalData(){let msg=await dbExecute("chatMsg","readonly",s=>s.getAll());let group=await dbExecute("wordGroup","readonly",s=>s.getAll());let word=await dbExecute("replyWord","readonly",s=>s.getAll());let face=await dbExecute("localFace","readonly",s=>s.getAll());let config=await dbExecute("userConfig","readonly",s=>s.getAll());let fullData={chatMsg:msg,wordGroup:group,replyWord:word,localFace:face,userConfig:config,createTime:new Date().toLocaleString()};let blob=new Blob([JSON.stringify(fullData,null,2)],{type:"application/json"});let url=URL.createObjectURL(blob);let a=document.createElement("a");a.href=url;a.download="昼月私语_私密聊天完整备份.json";a.click();URL.revokeObjectURL(url)}
+//全量数据导入
+async function importAllLocalData(e){let file=e.target.files[0];if(!file||!confirm("导入将覆盖当前所有本地聊天数据、字卡、设置，确定继续？"))return;let r=new FileReader;r.onload=async(res)=>{try{let data=JSON.parse(res.target.result);await clearAllDatabaseTable();for(let m of data.chatMsg)await dbExecute("chatMsg","readwrite",s=>s.put(m));for(let g of data.wordGroup)await dbExecute("wordGroup","readwrite",s=>s.put(g));for(let w of data.replyWord)await dbExecute("replyWord","readwrite",s=>s.put(w));for(let f of data.localFace)await dbExecute("localFace","readwrite",s=>s.put(f));for(let c of data.userConfig)await dbExecute("userConfig","readwrite",s=>s.put(c));alert("私密数据导入成功，页面自动刷新");location.reload()}catch{alert("备份文件格式错误，导入失败")}};r.readAsText(file);e.target.value=""}
+async function clearAllDatabaseTable(){await dbExecute("chatMsg","readwrite",s=>s.clear());await dbExecute("wordGroup","readwrite",s=>s.clear());await dbExecute("replyWord","readwrite",s=>s.clear());await dbExecute("localFace","readwrite",s=>s.clear());await dbExecute("userConfig","readwrite",s=>s.clear())}
+async function clearAllBrowserData(){if(!confirm("确定清空浏览器内所有昼月私语私密数据？清空后无法恢复！"))return;await clearAllDatabaseTable();alert("全部本地私密数据已清空");location.reload()}
+</script>
+</body>
+</html>
